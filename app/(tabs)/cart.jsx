@@ -1,62 +1,68 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, Image, Button, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import { addToCart } from '../../database';
+import React, { useState } from 'react';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, Button } from 'react-native';
+import { getCartItems, clearCart } from '../../database';
+import { useFocusEffect } from '@react-navigation/native';
 
-export default function ProductsScreen() {
-  const [products, setProducts] = useState([]);
+export default function CartScreen() {
+  const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchProducts = async () => {
+
+  const fetchCartItems = async () => {
     try {
       setLoading(true);
-      const response = await fetch('https://fakestoreapi.com/products');
-      const data = await response.json();
-      setProducts(data);
+      const items = await getCartItems();
+      if (JSON.stringify(items) !== JSON.stringify(cartItems)) {
+        setCartItems(items);
+      }
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching cart items:', error);
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const handleAddToCart = async (product) => {
+  const handleClearCart = async () => {
     try {
-      await addToCart(product);
-      alert('Added to cart!');
+      await clearCart();
+      setCartItems([]);
     } catch (error) {
-      console.error('Error adding to cart:', error);
+      console.error('Error clearing cart:', error);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchProducts();
-    setRefreshing(false);
-  };
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchCartItems();
+    }, [])
+  );
 
   if (loading) {
     return <ActivityIndicator size="large" color="#0000ff" />;
   }
 
+  if (cartItems.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Your cart is empty</Text>
+      </View>
+    );
+  }
+
   return (
-    <FlatList
-      data={products}
-      keyExtractor={(item) => item.id.toString()}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      renderItem={({ item }) => (
-        <View style={styles.card}>
-          <Image source={{ uri: item.image }} style={styles.image} />
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.price}>${item.price}</Text>
-          <Button title="Добавить в корзину" onPress={() => handleAddToCart(item)} />
-        </View>
-      )}
-    />
+    <View style={{ flex: 1 }}>
+      <Button title="Очистить корзину" onPress={handleClearCart} />
+      <FlatList
+        data={cartItems}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.card}>
+            <Text style={styles.title}>{item.title}</Text>
+            <Text style={styles.price}>${item.price}</Text>
+          </View>
+        )}
+      />
+    </View>
   );
 }
 
@@ -72,11 +78,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  image: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'contain',
-  },
   title: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -87,4 +88,14 @@ const styles = StyleSheet.create({
     color: '#888',
     marginBottom: 8,
   },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#888',
+  },
 });
+
