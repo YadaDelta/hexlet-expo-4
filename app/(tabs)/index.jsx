@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, Image, Button, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
-import { addToCart } from '../../database';
+import { addToCart, initializeDatabase } from '../../database';
 
 export default function ProductsScreen() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    initializeDatabase();
+  }, []);
 
   const fetchProducts = async () => {
     try {
